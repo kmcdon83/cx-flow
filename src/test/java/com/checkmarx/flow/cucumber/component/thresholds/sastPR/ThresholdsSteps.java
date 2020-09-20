@@ -8,7 +8,6 @@ import com.checkmarx.flow.exception.MachinaException;
 import com.checkmarx.flow.service.*;
 import com.checkmarx.sdk.config.Constants;
 import com.checkmarx.sdk.config.CxProperties;
-import com.checkmarx.sdk.config.ScaProperties;
 import com.checkmarx.sdk.dto.Filter;
 import com.checkmarx.sdk.dto.ScanResults;
 import com.checkmarx.sdk.dto.cx.CxScanSummary;
@@ -66,6 +65,7 @@ public class ThresholdsSteps {
     private final ADOProperties adoProperties;
     private final EmailService emailService;
     private final ScmConfigOverrider scmConfigOverrider;
+    private final GitHubAppAuthService gitHubAppAuthService;
 
     private ScanResults scanResultsToInject;
     private ResultsService resultsService;
@@ -74,10 +74,11 @@ public class ThresholdsSteps {
 
     public ThresholdsSteps(CxClient cxClientMock, RestTemplate restTemplateMock, FlowProperties flowProperties, ADOProperties adoProperties,
                            CxProperties cxProperties, GitHubProperties gitHubProperties, ThresholdValidator thresholdValidator,
-                           EmailService emailService, ScmConfigOverrider scmConfigOverrider) {
+                           EmailService emailService, ScmConfigOverrider scmConfigOverrider, GitHubAppAuthService gitHubAppAuthService) {
 
         this.cxClientMock = cxClientMock;
         this.restTemplateMock = restTemplateMock;
+        this.gitHubAppAuthService = gitHubAppAuthService;
 
         flowProperties.setThresholds(new HashMap<>());
         this.flowProperties = flowProperties;
@@ -254,7 +255,8 @@ public class ThresholdsSteps {
                 gitHubProperties,
                 flowProperties,
                 thresholdValidator,
-                scmConfigOverrider);
+                scmConfigOverrider,
+                gitHubAppAuthService);
 
         ADOService adoService = new ADOService(restTemplateMock,
                 adoProperties,
