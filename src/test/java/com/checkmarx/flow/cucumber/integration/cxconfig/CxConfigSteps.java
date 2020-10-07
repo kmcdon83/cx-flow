@@ -530,7 +530,6 @@ public class CxConfigSteps {
                 flowService,
                 helperService,
                 gitHubService,
-                null,
                 filterFactory,
                 configOverrider,
                 scmConfigOverrider));

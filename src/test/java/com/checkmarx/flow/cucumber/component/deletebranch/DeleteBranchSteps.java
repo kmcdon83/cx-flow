@@ -344,7 +344,6 @@ public class DeleteBranchSteps {
                 flowServiceSpy,
                 helperService,
                 gitHubService,
-                sastScanner,
                 filterFactory,
                 configOverrider,
                 null));

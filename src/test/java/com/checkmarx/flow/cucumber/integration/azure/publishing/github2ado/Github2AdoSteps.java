@@ -305,7 +305,6 @@ public class Github2AdoSteps {
                 flowService,
                 helperService,
                 gitHubService,
-                null,
                 filterFactory,
                 configOverrider,
                 scmConfigOverrider));

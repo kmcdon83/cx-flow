@@ -74,7 +74,6 @@ public class ConfigAsCodeBranchSteps {
                 flowServiceMock,
                 helperService,
                 gitHubService,
-                null,
                 filterFactory,
                 configOverrider,
                 scmConfigOverrider));
