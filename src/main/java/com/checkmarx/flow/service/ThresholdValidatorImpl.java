@@ -39,13 +39,15 @@ public class ThresholdValidatorImpl implements ThresholdValidator {
     private final FlowProperties flowProperties;
     private final ScaProperties scaProperties;
     private final SastScanner sastScanner;
+    private final CxGoScanner cxGoScanner;
     private final SCAScanner scaScanner;
 
     @Autowired
-    public ThresholdValidatorImpl(@Lazy SastScanner sastScanner, @Lazy SCAScanner scaScanner,
+    public ThresholdValidatorImpl(@Lazy SastScanner sastScanner, @Lazy SCAScanner scaScanner, @Lazy CxGoScanner cxGoScanner,
                                   FlowProperties flowProperties, ScaProperties scaProperties) {
         this.sastScanner = sastScanner;
         this.scaScanner = scaScanner;
+        this.cxGoScanner = cxGoScanner;
         this.flowProperties = flowProperties;
         this.scaProperties = scaProperties;
     }
@@ -71,7 +73,7 @@ public class ThresholdValidatorImpl implements ThresholdValidator {
         }
 
         boolean isAllowed = true;
-        if (isSast()) {
+        if (isSastOrCxGo()) {
             isAllowed = isAllowedSast(scanResults, pullRequestReport);
         }
 
@@ -82,8 +84,8 @@ public class ThresholdValidatorImpl implements ThresholdValidator {
         return isAllowed;
     }
 
-    private boolean isSast() {
-        return sastScanner.isEnabled();
+    private boolean isSastOrCxGo() {
+        return cxGoScanner.isEnabled() || sastScanner.isEnabled();
     }
 
     private boolean isAllowedSca(ScanResults scanResults, PullRequestReport pullRequestReport) {
