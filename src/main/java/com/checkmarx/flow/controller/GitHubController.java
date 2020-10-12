@@ -1,8 +1,5 @@
 package com.checkmarx.flow.controller;
 
-import com.checkmarx.configprovider.ConfigProvider;
-import com.checkmarx.configprovider.dto.SourceProviderType;
-import com.checkmarx.configprovider.readers.RepoReader;
 import com.checkmarx.flow.config.FlowProperties;
 import com.checkmarx.flow.config.GitHubProperties;
 import com.checkmarx.flow.config.JiraProperties;
@@ -19,7 +16,6 @@ import com.checkmarx.flow.service.*;
 import com.checkmarx.flow.utils.HTMLHelper;
 import com.checkmarx.flow.utils.ScanUtils;
 import com.checkmarx.sdk.config.Constants;
-import com.checkmarx.sdk.config.CxProperties;
 import com.checkmarx.sdk.dto.CxConfig;
 import com.checkmarx.sdk.dto.filtering.FilterConfiguration;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -34,7 +30,6 @@ import org.springframework.web.bind.annotation.*;
 import javax.annotation.PostConstruct;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
-import javax.naming.ConfigurationException;
 import javax.xml.bind.DatatypeConverter;
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -65,7 +60,6 @@ public class GitHubController extends WebhookController {
     private static final Logger log = org.slf4j.LoggerFactory.getLogger(GitHubController.class);
     private final GitHubProperties properties;
     private final FlowProperties flowProperties;
-    private final CxProperties cxProperties;
     private final JiraProperties jiraProperties;
     private final FlowService flowService;
     private final HelperService helperService;
@@ -165,8 +159,7 @@ public class GitHubController extends WebhookController {
             List<String> branches = getBranches(controllerRequest, flowProperties);
             BugTracker bt = ScanUtils.getBugTracker(controllerRequest.getAssignee(), bugType, jiraProperties, controllerRequest.getBug());
             FilterConfiguration filter = filterFactory.getFilter(controllerRequest, flowProperties);
-
-            setExclusionProperties(cxProperties, controllerRequest);
+            
             //build request object
             String gitUrl = Optional.ofNullable(pullRequest.getHead().getRepo())
                     .map(Repo::getCloneUrl)
@@ -175,8 +168,7 @@ public class GitHubController extends WebhookController {
             log.info("Using url: {}", gitUrl);
             String gitAuthUrl = gitUrl.replace(Constants.HTTPS, Constants.HTTPS.concat(token).concat("@"));
             gitAuthUrl = gitAuthUrl.replace(Constants.HTTP, Constants.HTTP.concat(token).concat("@"));
-
-            String scanPreset = cxProperties.getScanPreset();
+            
 
             ScanRequest request = ScanRequest.builder()
                     .application(app)
@@ -194,15 +186,14 @@ public class GitHubController extends WebhookController {
                     .mergeNoteUri(event.getPullRequest().getIssueUrl().concat("/comments"))
                     .mergeTargetBranch(targetBranch)
                     .email(null)
-                    .incremental(isScanIncremental(controllerRequest, cxProperties))
-                    .scanPreset(scanPreset)
+                    .scanPreset(controllerRequest.getPreset())
+                    .incremental(controllerRequest.getIncremental())
                     .excludeFolders(controllerRequest.getExcludeFolders())
                     .excludeFiles(controllerRequest.getExcludeFiles())
                     .bugTracker(bt)
                     .filter(filter)
                     .build();
 
-            overrideScanPreset(controllerRequest, request);
             setScmInstance(controllerRequest, request);
 
             /*Check for Config as code (cx.config) and override*/
@@ -247,7 +238,7 @@ public class GitHubController extends WebhookController {
 
         gitHubService.initConfigProviderOnPushEvent(uid, event);
 
-        if (flowProperties == null || cxProperties == null) {
+        if (flowProperties == null ) {
             log.error("Properties have null values");
             throw new MachinaRuntimeException();
         }
@@ -284,8 +275,6 @@ public class GitHubController extends WebhookController {
             BugTracker bt = ScanUtils.getBugTracker(controllerRequest.getAssignee(), bugType, jiraProperties, controllerRequest.getBug());
             FilterConfiguration filter = filterFactory.getFilter(controllerRequest, flowProperties);
 
-            setExclusionProperties(cxProperties, controllerRequest);
-
             //build request object
             Repository repository = event.getRepository();
             String gitUrl = repository.getCloneUrl();
@@ -297,8 +286,7 @@ public class GitHubController extends WebhookController {
             }
             String gitAuthUrl = gitUrl.replace(Constants.HTTPS, Constants.HTTPS.concat(token).concat("@"));
             gitAuthUrl = gitAuthUrl.replace(Constants.HTTP, Constants.HTTP.concat(token).concat("@"));
-
-            String scanPreset = cxProperties.getScanPreset();
+            
 
             ScanRequest request = ScanRequest.builder()
                     .application(app)
@@ -314,15 +302,15 @@ public class GitHubController extends WebhookController {
                     .defaultBranch(repository.getDefaultBranch())
                     .refs(event.getRef())
                     .email(determineEmails(event))
-                    .incremental(isScanIncremental(controllerRequest, cxProperties))
-                    .scanPreset(scanPreset)
+                    .scanPreset(controllerRequest.getPreset())
+                    .incremental(controllerRequest.getIncremental())
                     .excludeFolders(controllerRequest.getExcludeFolders())
                     .excludeFiles(controllerRequest.getExcludeFiles())
                     .bugTracker(bt)
                     .filter(filter)
                     .build();
 
-            overrideScanPreset(controllerRequest, request);
+
             setScmInstance(controllerRequest, request);
 
             /*Check for Config as code (cx.config) and override*/
@@ -386,7 +374,7 @@ public class GitHubController extends WebhookController {
             throw new MachinaRuntimeException(e);
         }
 
-        if(flowProperties == null || cxProperties == null){
+        if(flowProperties == null ){
             log.error("Properties have null values");
             throw new MachinaRuntimeException();
         }

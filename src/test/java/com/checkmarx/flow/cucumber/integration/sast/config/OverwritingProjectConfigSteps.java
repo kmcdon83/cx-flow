@@ -125,7 +125,7 @@ public class OverwritingProjectConfigSteps {
     @When("GitHub notifies CxFlow about a pull request for the {string} project")
     public void githubNotifiesCxFlowAboutAPullRequest(String projectName) {
 
-        GitHubController gitHubController = new GitHubController(gitHubProperties, flowProperties, cxProperties,
+        GitHubController gitHubController = new GitHubController(gitHubProperties, flowProperties,
                 null, flowService, helperService, gitHubService, filterFactory, configOverrider,
                 scmConfigOverrider);
 

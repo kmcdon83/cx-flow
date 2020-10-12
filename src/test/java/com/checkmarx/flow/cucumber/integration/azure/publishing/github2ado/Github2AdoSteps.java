@@ -300,7 +300,6 @@ public class Github2AdoSteps {
         //And thus it will work with real gitHubService
         this.gitHubControllerSpy = spy(new GitHubController(gitHubProperties,
                 flowProperties,
-                cxProperties,
                 null,
                 flowService,
                 helperService,
