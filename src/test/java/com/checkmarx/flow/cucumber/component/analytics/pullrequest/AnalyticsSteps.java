@@ -25,6 +25,7 @@ import com.checkmarx.sdk.dto.ast.Summary;
 import com.checkmarx.sdk.dto.filtering.FilterConfiguration;
 import com.checkmarx.sdk.exception.CheckmarxException;
 import com.checkmarx.sdk.service.CxClient;
+import com.checkmarx.sdk.service.CxService;
 import com.checkmarx.test.flow.config.CxFlowMocksConfig;
 import com.cx.restclient.dto.scansummary.Severity;
 import com.cx.restclient.ast.dto.sca.report.Finding;
@@ -66,7 +67,7 @@ public class AnalyticsSteps {
     private final ThresholdValidator thresholdValidator;
     private final ScmConfigOverrider scmConfigOverrider;
 
-    private final CxClient cxClientMock;
+    private final CxService cxClientMock;
     private final CxProperties cxProperties;
     private final RestTemplate restTemplateMock;
 
@@ -238,6 +239,9 @@ public class AnalyticsSteps {
         return new ResultsService(
                 cxClientMock,
                 null,
+                cxProperties,
+                null,
+                null,
                 null,
                 null,
                 gitService,
@@ -245,7 +249,7 @@ public class AnalyticsSteps {
                 null,
                 null,
                 null,
-                cxProperties);
+                null);
     }
 
     private static ScanResults createFakeSASTScanResults(Map<FindingSeverity, Integer> findingsPerSeverity) {

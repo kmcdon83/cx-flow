@@ -8,12 +8,12 @@ import com.checkmarx.flow.exception.MachinaException;
 import com.checkmarx.flow.service.*;
 import com.checkmarx.sdk.config.Constants;
 import com.checkmarx.sdk.config.CxProperties;
-import com.checkmarx.sdk.config.ScaProperties;
 import com.checkmarx.sdk.dto.Filter;
 import com.checkmarx.sdk.dto.ScanResults;
 import com.checkmarx.sdk.dto.cx.CxScanSummary;
 import com.checkmarx.sdk.exception.CheckmarxException;
 import com.checkmarx.sdk.service.CxClient;
+import com.checkmarx.sdk.service.CxService;
 import com.checkmarx.test.flow.config.CxFlowMocksConfig;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -57,7 +57,7 @@ public class ThresholdsSteps {
     private static final ObjectMapper mapper = new ObjectMapper();
     private static final String STATUSES_URL_KEY = "statuses_url";
 
-    private final CxClient cxClientMock;
+    private final CxService cxClientMock;
     private final RestTemplate restTemplateMock;
     private final ThresholdValidator thresholdValidator;
     private final FlowProperties flowProperties;
@@ -72,7 +72,7 @@ public class ThresholdsSteps {
     private Boolean pullRequestWasApproved;
     private Filter filter;
 
-    public ThresholdsSteps(CxClient cxClientMock, RestTemplate restTemplateMock, FlowProperties flowProperties, ADOProperties adoProperties,
+    public ThresholdsSteps(CxService cxClientMock, RestTemplate restTemplateMock, FlowProperties flowProperties, ADOProperties adoProperties,
                            CxProperties cxProperties, GitHubProperties gitHubProperties, ThresholdValidator thresholdValidator,
                            EmailService emailService, ScmConfigOverrider scmConfigOverrider) {
 
@@ -262,12 +262,17 @@ public class ThresholdsSteps {
                 adoProperties,
                 flowProperties,
                 cxProperties,
+                null,
                 scmConfigOverrider,
-                thresholdValidator);
+                thresholdValidator
+                );
 
         
         return new ResultsService(
                 cxClientMock,
+                null,
+                cxProperties,
+                null,
                 null,
                 null,
                 null,
@@ -276,7 +281,7 @@ public class ThresholdsSteps {
                 null,
                 adoService,
                 emailService,
-                cxProperties);
+                flowProperties);
     }
 
     private static ScanResults createFakeScanResults() {

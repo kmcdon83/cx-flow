@@ -56,7 +56,6 @@ public class CxConfigBugTrackerSteps {
     private GitHubController gitHubControllerSpy;
     private final ObjectMapper mapper = new ObjectMapper();
     private final FlowProperties flowProperties;
-    private final CxProperties cxProperties;
     private final GitHubProperties gitHubProperties;
     private final HelperService helperService;
     private final FilterFactory filterFactory;
@@ -71,15 +70,14 @@ public class CxConfigBugTrackerSteps {
 
 
     public CxConfigBugTrackerSteps(FlowProperties flowProperties, GitHubService gitHubService,
-                                   CxProperties cxProperties, GitHubProperties gitHubProperties,
+                                   GitHubProperties gitHubProperties,
                                    JiraProperties jiraProperties, GitHubController gitHubController,
                                    FilterFactory filterFactory, ConfigurationOverrider configOverrider,
                                    ScmConfigOverrider scmConfigOverrider) {
 
 
         this.flowProperties = flowProperties;
-
-        this.cxProperties = cxProperties;
+        
         this.jiraProperties = jiraProperties;
         this.filterFactory = filterFactory;
         this.helperService = mock(HelperService.class);

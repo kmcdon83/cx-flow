@@ -9,7 +9,9 @@ import com.checkmarx.flow.service.*;
 import com.checkmarx.flow.utils.HTMLHelper;
 import com.checkmarx.flow.utils.ScanUtils;
 import com.checkmarx.sdk.config.Constants;
+import com.checkmarx.sdk.config.CxGoProperties;
 import com.checkmarx.sdk.config.CxProperties;
+import com.checkmarx.sdk.config.CxPropertiesBase;
 import com.checkmarx.sdk.dto.Filter;
 import com.checkmarx.sdk.dto.ScanResults;
 import com.checkmarx.sdk.dto.filtering.FilterConfiguration;
@@ -49,6 +51,7 @@ public class FlowController {
 
     private final FlowProperties properties;
     private final CxProperties cxProperties;
+    private final CxGoProperties cxgoProperties;
     private final FlowService scanService;
     private final HelperService helperService;
     private final JiraProperties jiraProperties;
@@ -142,7 +145,7 @@ public class FlowController {
                 application = project;
             }
             if(ScanUtils.empty(team)){
-                team = cxProperties.getTeam();
+                team = getCxProperties().getTeam();
             }
             properties.setTrackApplicationOnly(scanRequest.isApplicationOnly());
 
@@ -154,11 +157,11 @@ public class FlowController {
                         .success(false)
                         .build());
             }
-            String scanPreset = cxProperties.getScanPreset();
+            String scanPreset = getCxProperties().getScanPreset();
             if(!ScanUtils.empty(scanRequest.getPreset())){
                 scanPreset = scanRequest.getPreset();
             }
-            boolean inc = cxProperties.getIncremental();
+            boolean inc = getCxProperties().getIncremental();
             if(scanRequest.isIncremental()){
                 inc = true;
             }
@@ -186,11 +189,11 @@ public class FlowController {
 
             List<String> excludeFiles = scanRequest.getExcludeFiles();
             List<String> excludeFolders = scanRequest.getExcludeFolders();
-            if((excludeFiles == null) && !ScanUtils.empty(cxProperties.getExcludeFiles())){
-                excludeFiles = Arrays.asList(cxProperties.getExcludeFiles().split(","));
+            if((excludeFiles == null) && !ScanUtils.empty(getCxProperties().getExcludeFiles())){
+                excludeFiles = Arrays.asList(getCxProperties().getExcludeFiles().split(","));
             }
-            if(excludeFolders == null && !ScanUtils.empty(cxProperties.getExcludeFolders())){
-                excludeFolders = Arrays.asList(cxProperties.getExcludeFolders().split(","));
+            if(excludeFolders == null && !ScanUtils.empty(getCxProperties().getExcludeFolders())){
+                excludeFolders = Arrays.asList(getCxProperties().getExcludeFolders().split(","));
             }
 
             ScanRequest request = ScanRequest.builder()
@@ -235,6 +238,10 @@ public class FlowController {
                 .message("Scan Request Successfully Submitted")
                 .success(true)
                 .build());
+    }
+
+    private CxPropertiesBase getCxProperties() {
+        return ScanUtils.getBaseProperties(properties,cxgoProperties,cxProperties);
     }
 
     private FilterConfiguration determineFilter(CxScanRequest scanRequest) {

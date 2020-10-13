@@ -21,6 +21,7 @@ import com.atlassian.jira.rest.client.api.domain.SearchResult;
 import com.atlassian.jira.rest.client.internal.async.CustomAsynchronousJiraRestClientFactory;
 import com.checkmarx.flow.config.JiraProperties;
 
+import com.checkmarx.sdk.config.CxGoProperties;
 import com.checkmarx.sdk.config.CxProperties;
 import io.atlassian.util.concurrent.Promise;
 import lombok.extern.slf4j.Slf4j;
@@ -52,7 +53,7 @@ enum BugTracker {
 
         @Override
         void verifyIssueCreated(String severities, String engine) {
-            jqlQuery =  (CxProperties.CONFIG_PREFIX.equalsIgnoreCase(engine))
+            jqlQuery =  (CxProperties.CONFIG_PREFIX.equalsIgnoreCase(engine) || CxGoProperties.CONFIG_PREFIX.equalsIgnoreCase(engine))
                     ? String.format("project = %s and priority  in %s", jiraProperties.getProject(), severities)
                     : String.format("project = %s and summary ~\"CVE-?\"", jiraProperties.getProject());
             log.info("filtering issue with jql: {}", jqlQuery);

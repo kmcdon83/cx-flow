@@ -1,16 +1,23 @@
 package com.checkmarx.flow.utils;
 
+import com.checkmarx.flow.config.FlowProperties;
 import com.checkmarx.flow.config.JiraProperties;
 import com.checkmarx.flow.constants.SCATicketingConstants;
 import com.checkmarx.flow.dto.*;
 import com.checkmarx.flow.exception.MachinaRuntimeException;
 import com.checkmarx.sdk.config.Constants;
+import com.checkmarx.sdk.config.CxGoProperties;
+import com.checkmarx.sdk.config.CxProperties;
+import com.checkmarx.sdk.config.CxPropertiesBase;
 import com.checkmarx.sdk.dto.Filter;
 import com.checkmarx.sdk.dto.ScanResults;
 import com.checkmarx.sdk.dto.ast.SCAResults;
+import com.checkmarx.sdk.service.CxClient;
+import com.checkmarx.sdk.service.CxService;
+import com.cx.restclient.CxGoClientImpl;
+import com.cx.restclient.ScannerClient;
 import com.cx.restclient.ast.dto.sast.report.FindingNode;
 import com.checkmarx.sdk.dto.cx.CxScanSummary;
-import com.cx.restclient.ast.dto.sast.report.StatusCounter;
 import com.cx.restclient.ast.dto.sca.report.Finding;
 import com.cx.restclient.ast.dto.sca.report.Package;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -77,7 +84,7 @@ public class ScanUtils {
         }
         return false;
     }
-
+    
     public static boolean isSAST(ScanResults.XIssue issue) {
         return issue.getScaDetails() == null;
     }
@@ -582,5 +589,13 @@ public class ScanUtils {
                 .append(urlColonEncode).append(urlCompatiblePackageId).append("/vulnerabilityDetails");
 
         return vulnerabilityUrl.toString();
+    }
+
+    public static ScannerClient getBaseScanner(FlowProperties flowProperties, CxGoClientImpl cxGoClient, CxClient cxService) {
+        return flowProperties.isCxGoEnabled() && cxGoClient!=null ? cxGoClient : cxService;
+    }
+    
+    public static CxPropertiesBase getBaseProperties(FlowProperties flowProperties, CxGoProperties cxgoProperties, CxProperties cxProperties){
+        return flowProperties.isCxGoEnabled() && cxgoProperties != null ? cxgoProperties : cxProperties;
     }
 }
