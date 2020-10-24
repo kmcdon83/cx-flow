@@ -1,411 +1,143 @@
-# Architecture
+* [Web Service](#webservice)
+* [Overview](#overview)
+* [Load Balancing](#loadbalancing)
+* [Workflow](#workflow)
+* [Network Architecture](#network)
+* [Software Components](#software)
+* [Execution](#execution)
+* [Configuration](#configuration)
+* [Access Control](#accesscontrol)
+* [Defect Trackers](#defect)
+* [Checkmarx](#checkmarx)
+* [SCM Repository](#scm)
+* [Secrets and Credentials](#secrets)
+* [CxFlow](#cxflow)
+* [Data Elements](#data)
+* [Persistence](#persistence)
+* [Logging](#logging)
+* [Development](#development)
+* [Backlog](#backlog)
+* [Build/Release](#build)
 
-# Web Service (WebHook)
+## <a name="webhook">Web Service (WebHook)</a>
+[[/Images/arch1.png|Architecture diagram displaying the flow from repository through CxFlow to CxSAST and Issue Tracking software]]
+## <a name="overview">Overview</a>
+* CxFlow listens to HTTP/S requests matching specific payloads that represent pull/merge requests and push requests.
+  * Bitbucket (Server & Cloud)
+  * GitHub 
+  * Azure DevOps / TFS
+  * GitLab
+* CxFlow is configured to process events associated with branches considered important/protected across the enterprise based on the following:
+  * List of static values
+    * master
+    * develop
+    * release
+  * List of regular expressions
+  * External Groovy Script execution hooks
+* Upon receiving an event, CxFlow will:
+  * A scan request for the repository will be initiated 
+    * Scans will be attempted as incremental with the following rules (optional):
+      * A full scan was conducted within the last 7 days (configurable)
+      * A scan was conducted within the last 5 scans (configurable)
+    * Global file exclusion pattern(s) will be applied for every scan according to the CxFlow configuration
+  * Optionally Result feedback can be configured
+    * CxFlow generates the XML report
+    * Results are filtered
+    * Results are published according to the configured feedback channel(s)
+    * File type, number of references, percentage of code base (reflected from post exclusions) are mapped
+    * CxFlow iterates through a rule set that attempts to match the fingerprint of the source code
+      * Rules are evaluated in the order they have been provided in the configuration file. Once a match is found, CxFlow stops checking further
+      * There is a default/catchall rule for those not matching a finger print
+    * Based on the fingerprint rule matching, an associated Checkmarx preset is assigned
+    * This information is saved to the local CxFlow cache.  **Note:**  If multiple instances of CxFlow are load-balanced, the cache is only available to the local instance performing the processing.  This design can be enhanced if required.
+  * A scan request for the repository is initiated with the scan preset that has been assigned in the previous step(s)
+    * Scans are attempted as incremental with the following rules:
+      * A full scan has been conducted within the last 7 days
+      * A scan has been conducted within the last 5 scans
+    * Global file exclusion pattern(s) are applied for every scan according to the CxFlow configuration
+  * In addition, result feedbacks can be configured as follows:
+    * CxFlow generates the XML report.
+    * Results are filtered
+    * Results are published according to the configured feedback channel(s)
 
-## Overview
+### <a name="loadbalancing">Load Balancing</a>
+CxFlow integrates easily with Load Balancing as it is stateless/RESTful and can run on any available port
 
--   CxFlow Listens to HTTP/S requests matching specific payloads that
-    represent Pull/Merge Requests and Push Requests.
-    -   Bitbucket (Server & Cloud)
-    -   GitHub 
-    -   Azure DevOps / TFS
-    -   GitLab
--   CxFlow will be configured to process events associated with branches
-    deemed important/protected across the enterprise based on
-    -   List of static values
-        -   master
-        -   develop
-        -   release
-    -   List of regular expressions
-    -   External Groovy Script execution hooks
--   Upon receiving an event, CxFlow will:
-    -   A scan request for the repository will be initiated 
-        -   Scans will be attempted as incremental with the following
-            rules (optional):
-            -   A full scan was conducted within the last 7 days
-                (configurable)
-            -   A scan was conducted within the last 5 scans
-                (configurable)
-        -   Global file exclusion pattern(s) will be applied for every
-            scan according to the CxFlow configuration
-    -   Optionally Result feedback can be configured 
-        -   CxFlow will generate the XML report
-        -   Results will be filtered
-        -   Results will be published according to the configured
-            feedback channel(s)
+## <a name="workflow">Workflow</a>
+Refer to the [following](https://github.com/checkmarx-ltd/cx-flow/wiki/Workflows) for additional information.
+[[/Images/arch2.png|Swimlane diagram of typical CxFlow workflow]]
 
-<!-- -->
-
--   -   -   File type, number of references, percentage of code base
-            (reflected from post exclusions) will be mapped
-        -   CxFlow will iterate through a rule set that will attempt to
-            match the fingerprint of the source code
-            -   Rules will be evaluated in order provided in the
-                configuration file, once a match is found it will stop
-                checking further
-            -   There will be a default / catchall rule for those not
-                matching a finger print
-        -   The based on the fingerprint rule matching, an associated
-            Checkmarx preset will be assigned
-        -   This information will be save to the local CxFlow
-            cache.  *Note:  If multiple instances of CxFlow are load
-            balanced, the cache will only be available to the local
-            instance doing the processing.  This design can be enhanced
-            if required.*
-
-    -   A scan request for the repository will be initiated with the
-        scan preset that has been assigned in the previous step(s)
-        -   Scans will be attempted as incremental with the following
-            rules:
-            -   A full scan was conducted within the last 7 days
-            -   A scan was conducted within the last 5 scans
-        -   Global file exclusion pattern(s) will be applied for every
-            scan according to the CxFlow configuration
-
-    -   Optionally Result feedback can be configured 
-        -   CxFlow will generate the XML report
-        -   Results will be filtered
-        -   Results will be published according to the configured
-            feedback channel(s)
-
-### Load balancing
-
-CxFlow works easily with Load Balancing as it is stateless / RESTful and
-can run on **any available port**
-
-## Workflow
-
-Please see the [following](Cx_Flow_Workflows) for additional
-information.
-
-## Network Architecture
+## <a name="network">Network Architecture</a>
+The network architecture is divided into inbound and outbound traffic.
 
 ### Inbound
+CxFlow requires network connectivity from the SCM Repository to the specified port which it is listening on (8443 - HTTPS | 8080 - HTTP). CxFlow can filter access based on IP addresses. 
 
-CxFlow requires network connectivity from the SCM Repository to the
-specified port that is listening on (8443 - HTTPS \| 8080 - HTTP)
-
-CxFlow can filter access based on IP(s) 
-
-Note:  This will be available in the next release
+**NOTE**: This functionality becomes available with the next release.
 
 ### Outbound
-
-Access is required from CxFlow to any desired feedback channels over
-HTTP/S:
-
--   Jira
--   Azure DevOps WorkItems
--   GitLab Issues
--   GitHub Issues
--   Pull / Merge Request Markdown Comments
-
+CxFlows requires access to any of the desired feedback channels over HTTP/S:
+* Jira
+* Azure DevOps WorkItems
+* GitLab Issues
+* GitHub Issues
+* Pull / Merge Request Markdown Comments
 Access is required for any Checkmarx Instances
 
-Software Components
+## <a name="software">Software Components</a>
+* Java Runtime 8 or 11
+* Gradle 5.4 (Build)
+* Spring Boot 2.1.9, Spring boot is regularly updated as part of ongoing 3rd party library maintenance
 
--   Java Runtime 8 or 11
--   Gradle 5.4 (Build)
--   Spring Boot 2.1.9
-    -   Spring boot is regularly updated as part of ongoing 3rd party
-        library maintenance
+## <a name="execution">Execution</a>
+Refer to the [detailed execution instructions](https://github.com/checkmarx-ltd/cx-flow/wiki/Execution)
 
-## Execution
+## <a name="configuration">Configuration</a>
+Refer to the [detailed configuration instructions](https://github.com/checkmarx-ltd/cx-flow/wiki/Configuration)
 
-Please see the [following](Cx_Flow_Execution) for detailed execution
-instructions
 
-## Configuration
+## <a name="accesscontrol">Access Control</a>
+This section outlines various access aspects.
 
-Please see the [following](CxFlow_Configuration) for detailed
-configuration instructions
+### <a name="defect">Defect Trackers</a>
+Access to the various defect management systems is provided via a service account and leverages an API token or service account credentials. Access should be granted to the appropriate service account for the desired use cases (i.e. create/update/close issue)
 
-## Access Control
+### <a name="checkmarx">Checkmarx</a>
+Access to Checkmarx is granted through OIDC JWT Token in the same fashion as any of the Checkmarx Plugins.  Required access is to Create teams, projects, initiate scans, retrieve results.
 
-### Defect Trackers
+### <a name="scm">SCM Repository</a>
+Access to the various defect SCM Repositories (Pull Request Feedback/Repo Issues) is provided via a service account and leverages an API token or service account credentials.
+Access must be granted as well to the appropriate service account for the desired use cases (i.e. read access to all relevant sources/read access to Pull events/access to comments on pull requests)
 
-Access to the various defect management systems is provided through a
-service account and leverages an API token or service account
-credentials)
+### <a name="secrets">Secrets/Credentials</a>
+Credentials can be injected into CxFlow using several techniques according to the following resource: [https://docs.spring.io/spring-boot/docs/2.1.9.RELEASE/reference/html/boot-features-external-config.html](https://docs.spring.io/spring-boot/docs/2.1.9.RELEASE/reference/html/boot-features-external-config.html). These credentials can be encrypted leveraging Jasypt
+### <a name="cxflow">CxFlow</a>
+SCM Repository events are authenticated by a shared key/token.  Each SCM provides a different mechanism to authenticate the request.  GitHub and Bitbucket Server use digital signature validation leveraging the shared key/token.  Others use a basic auth or API token header. This is specific and relative to the SCM design.
 
-Access should be granted to the service account appropriate to the
-desired use cases (i.e. create/update/close issue)
-
-### Checkmarx
-
-Access to Checkmarx is granted through OIDC JWT Token in the same
-fashion as any of the Checkmarx Plugins.  Required access is to Create
-teams, projects, initiate scans, retrieve results.
-
-### SCM Repository
-
-Access to the various defect SCM Repositories (Pull Request Feedback /
-Repo Issues) is provided through a service account and leverages an API
-token or service account credentials)
-
-Access should be granted to the service account appropriate to the
-desired use cases (i.e. read access to all relevant source/read access
-to Pull events/access to comment on Pull Requests)
-
-### Secrets/Credentials
-
-Credentials can be injected into CxFlow using several techniques
-according to the
-following: <https://docs.spring.io/spring-boot/docs/2.1.9.RELEASE/reference/html/boot-features-external-config.html>
-
-These credentials can be encrypted leveraging Jasypt - see the following
-
-### CxFlow
-
-SCM Repository events are authenticated through a shared key/token. 
-Each SCM provides a different mechanism to authenticate the request. 
-GitHub and Bitbucket Server use digital signature validation leveraging
-the shared key/token.  Others use a basic auth or API token header -
-this is specific and relative to the SCM design.
-
-## Data Elements
+## <a name="data">Data Elements</a>
 
 ### Inputs
-
--   SCM Repository Event Details associated code management events. 
-    GitHub
-    Example: <https://developer.github.com/v3/activity/events/types/#pullrequestevent>
--   Checkmarx Results.  As scans are finished, the results are generated
-    and pulled from Checkmarx.  Checkmarx scans are triggered using GIT
-    URL scan configuration with Auth token (GIT Clone).  This means tht
-    GIT must be configured on CxSAST
+* CM Repository Event Details are associated with code management events.  GitHub Example: [https://developer.github.com/v3/activity/events/types/#pullrequestevent](https://developer.github.com/v3/activity/events/types/#pullrequestevent)
+* Checkmarx Results. When scans are completed, the results are generated and pulled from Checkmarx.  Checkmarx scans are triggered using the GIT URL scan configuration with Auth token (GIT Clone).  This means that the GIT must be configured in CxSAST.
 
 ### Outputs
+* SAST/OSA scan results
+* HTTP API Payload with Vulnerability details.  Refer to the [feedback](https://github.com/checkmarx-ltd/cx-flow/wiki/Bug-Trackers-and-Feedback-Channels) channels for details
 
--   SAST/OSA Scan results 
--   HTTP API Payload with Vulnerability details.  See
-    [feedback](Bug_Trackers_Feedback_Channels) channels for details
+### <a name="persistence">Persistence</a>
+CxFlow has no persistence layer.  It is stateless and can easily be scaled behind several LB and container orchestration technologies.  Instead, it relies on the Checkmarx and Defect management system to store defects in a meaningful way to associate projects with existing issues and defects.
 
-### Persistence
+## <a name="logging">Logging</a>
+Logging details can be found under [Troubleshooting](https://github.com/checkmarx-ltd/cx-flow/wiki/Troubleshooting).
+Logging elements contain unique identifiers to associate all events for a specific payload/event request.  All events are logged for inbound SCM events and outbound feedback channel (defect management) events.
 
-CxFlow has no persistence layer.  It is stateless and be scaled easily
-behind several LB and container orchestration technologies.  It instead
-relies on Checkmarx and Defect management system to store defects in a
-meaningful way to associate projects to existing issues/defects/
+## <a name="development">Development</a>
+Refer to the [Development](https://github.com/checkmarx-ltd/cx-flow/wiki/Development) page
 
-### Credentials
+## <a name="backlog">Backlog</a>
+Issues and feature requests are managed [here](https://github.com/checkmarx-ts/cx-flow/issues).
 
-Credentials are stored/injected through various means as specified above
-in the access control section.
-
-## Logging
-
-Logging details can be found here [Troubleshooting
-CxFlow](Troubleshooting_CxFlow)
-
-Logging elements contain unique identifiers to associated all events for
-a specific payload/event request through to completion.  All events are
-logged for inbound SCM events and outbound feedback channel (defect
-management) events.
-
-## Development
-
-Refer the following for details
-
-[Development Operations](Development_Operations)
-
-[Development](https://checkmarx.atlassian.net/wiki/spaces/PTS/pages/1278116082/Development)
-
-## Support
-
-Refer the following for details
-
-[CxFlow Operational Model](CxFlow_Operational_Model)
-
-## Backlog
-
-Issues and feature requests are managed here:
-
-<https://github.com/checkmarx-ts/cx-flow/issues>
-
-## Build/Release
-
-Build and Release is managed through CircleCI using gradle.  Releases
-are automated published (develop branch for TS version) to
-
-**GitHub
-Release **<https://github.com/checkmarx-ts/cx-flow/releases> (compile
-JAR)
-
-**DockerHub **<https://hub.docker.com/r/checkmarxts/cxflow>
-
-  
-
-## Attachments:
-
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[blob](attachments/1369867881/1370358311)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[blob](attachments/1369867881/1369867889)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[blob](attachments/1369867881/1369835127)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[blob](attachments/1369867881/1369867898)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[blob](attachments/1369867881/1369835136)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[blob](attachments/1369867881/1369802681)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[blob](attachments/1369867881/1370358320)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[blob](attachments/1369867881/1370358329)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[blob](attachments/1369867881/1370358338)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[blob](attachments/1369867881/1370358347)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[blob](attachments/1369867881/1369835145)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[blob](attachments/1369867881/1369867907)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[blob](attachments/1369867881/1369867916)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[blob](attachments/1369867881/1370358356)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[blob](attachments/1369867881/1369802690)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[blob](attachments/1369867881/1369867925)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[blob](attachments/1369867881/1369867934)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[blob](attachments/1369867881/1369835154)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[blob](attachments/1369867881/1369835163)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[blob](attachments/1369867881/1370358365)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[blob](attachments/1369867881/1370358374)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[blob](attachments/1369867881/1369867943)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[Untitled Diagram.drawio](attachments/1369867881/1369835189.drawio)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[blob](attachments/1369867881/1369802702)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[Untitled Diagram.drawio.png](attachments/1369867881/1370358505.png)
-(image/png)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[blob](attachments/1369867881/1370358403)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[blob](attachments/1369867881/1370358412)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[blob](attachments/1369867881/1369867964)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[blob](attachments/1369867881/1369867973)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[blob](attachments/1369867881/1370358421)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[blob](attachments/1369867881/1370358430)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" /> [CxFlow
-Workflow.drawio](attachments/1369867881/1369802711.drawio)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" /> [CxFlow
-Workflow.drawio.png](attachments/1369867881/1369802716.png)
-(image/png)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[blob](attachments/1369867881/1369802675)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[\~Untitled Diagram.drawio.tmp](attachments/1369867881/1370358442.tmp)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[\~Untitled Diagram.drawio.tmp](attachments/1369867881/1369867995.tmp)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[\~Untitled Diagram.drawio.tmp](attachments/1369867881/1369868004.tmp)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[\~Untitled Diagram.drawio.tmp](attachments/1369867881/1369802732.tmp)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[\~Untitled Diagram.drawio.tmp](attachments/1369867881/1369802741.tmp)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[\~Untitled Diagram.drawio.tmp](attachments/1369867881/1369868013.tmp)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[\~Untitled Diagram.drawio.tmp](attachments/1369867881/1369802750.tmp)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[\~Untitled Diagram.drawio.tmp](attachments/1369867881/1370358451.tmp)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[\~Untitled Diagram.drawio.tmp](attachments/1369867881/1369802759.tmp)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[\~Untitled Diagram.drawio.tmp](attachments/1369867881/1370358460.tmp)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[\~Untitled Diagram.drawio.tmp](attachments/1369867881/1370358469.tmp)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[\~Untitled Diagram.drawio.tmp](attachments/1369867881/1369835180.tmp)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[\~Untitled Diagram.drawio.tmp](attachments/1369867881/1370358478.tmp)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[\~Untitled Diagram.drawio.tmp](attachments/1369867881/1369802768.tmp)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[\~Untitled Diagram.drawio.tmp](attachments/1369867881/1369802777.tmp)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[\~Untitled Diagram.drawio.tmp](attachments/1369867881/1369802786.tmp)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[\~Untitled Diagram.drawio.tmp](attachments/1369867881/1370358487.tmp)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[\~Untitled Diagram.drawio.tmp](attachments/1369867881/1369868022.tmp)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[\~Untitled Diagram.drawio.tmp](attachments/1369867881/1370358496.tmp)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[\~Untitled Diagram.drawio.tmp](attachments/1369867881/1370358515.tmp)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[Untitled Diagram.drawio](attachments/1369867881/1370358383.drawio)
-(application/vnd.jgraph.mxfile)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[Untitled Diagram.drawio.png](attachments/1369867881/1369835172.png)
-(image/png)  
-<img src="images/icons/bullet_blue.gif" width="8" height="8" />
-[\~Untitled Diagram.drawio.tmp](attachments/1369867881/1369802727.tmp)
-(application/octet-stream)  
+## <a name="build">Build/Release</a>
+Build and Release is managed via CircleCI using Gradle.  Releases are published automatically (develop branch for TS version) to 
+* **GitHub Release**: [https://github.com/checkmarx-ts/cx-flow/releases](https://github.com/checkmarx-ts/cx-flow/releases) (compile JAR)
+* **DockerHub**: [https://hub.docker.com/r/checkmarxts/cxflow](https://hub.docker.com/r/checkmarxts/cxflow)
